@@ -1,0 +1,138 @@
+---
+title: "Analysis Notebook"
+author: "Kira Goff"
+date: "2026-07-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r load-libraries}
+library(tidyverse)
+library(gggenes)
+library(ggrepel)
+library(gridExtra)
+library(cowplot)
+```
+
+```{r data-set-up}
+# Source your standalone R scripts
+source("R/parse_neighbourhood.R")
+source("R/extract_neighbourhood.R")
+source("R/plot_neighbourhood.R")
+
+# Define paths
+gbff_path    <- "git-ignore/peri.polished.gbff"
+de_csv_path  <- "git-ignore/annotated_operons_clusters_stats.csv"
+out_dir      <- "git-ignore/operon-results" # this can also be defined inside of a graphing call
+```
+
+# Data structure for input
+
+GBFF/GBK: 
+This can handle --compliant files or default Bakta/Prokka output.
+
+Differential expression file:
+
+Does it matter which program I use to generate differential expression data?
+- It's agnostic! Choose your favourite.
+
+How does it know what my time points are? How many can I have?
+- It looks for columns formatted [metric]_[timepoint]
+- This should work for any reasonable nubmer of time points
+
+How does it parse columns?
+- For time points, you can provide numbers or hours, e.g.
+  - [metric]_0
+  - [metric]_0h
+- For metrics, it has regex parsing
+  - for log 2 fold change, it accepts
+    - lfc
+    - log2fc
+    - fold
+    - fc
+  - for significance, it accepts
+    - padj
+    - p_adj
+    - qval
+    - pval
+- Other columns it's looking for:
+    - locus_tag (required)
+    - gene (a short form gene name)
+    - product (a longer descriptor for tables)
+    - operon (if using the pre-calculated 'operon' an 'gene' modes)
+
+
+```{r}
+genomic_df <- parse_gbff(gbff_path = gbff_path, de_csv_path = de_csv_path)
+```
+
+# Example A: Query by predefined operons or locus tags
+
+```{r query-by-operon}
+ filtered_data <- parse_neighbourhood(
+   master_data = genomic_df, 
+   query_type = "operon",             # locus_tag for a specific gene
+   query_values = c("2038"), 
+   flank_operons = 2
+ )
+ 
+ plot_neighbourhood(
+   filtered_data = filtered_data, 
+   style = "above", 
+   deseq_path = de_csv_path, 
+   output_dir = out_dir,
+ )
+```
+
+# Example B: Autodected operons 
+
+This autodetects operons based on 
+a) strand, and 
+b) intergenic distance (default 100, but can be adjusted)
+
+It's not as trustworthy as using something like operon-mapper, but it will suffice for visualization
+
+```{r automated-operon-detection}
+filtered_data <- parse_neighbourhood(
+  master_data = genomic_df, 
+  query_type = "operon_auto", 
+  query_values = c("PBUTOS_03315"), # Gene of interest
+  flank_operons = 0,               # flank operons upstream/downstream, if 0, autodetects gene operon
+  max_gap = 100                    # Basepair gap limit to define an operon break, default = 100
+)
+
+plot_neighbourhood(
+  filtered_data = filtered_data, 
+  style = "none", 
+  deseq_path = de_csv_path, 
+  output_dir = out_dir,
+  p_thresh = 0.1,           # significance threshold for * marker, default 0.05
+  clean_short_genes = FALSE # combined with 'none' or 'table', sticks the names into the gene arrows
+)
+```
+
+# Example C: Customizing visual outputs
+
+
+```{r visual-customization}
+filtered_data <- parse_neighbourhood(
+  master_data = genomic_df, 
+  query_type = "operon", 
+  query_values = c("2922"), 
+  flank_operons = 3,              
+)
+
+plot_neighbourhood(
+  filtered_data = filtered_data, 
+  style = "table", 
+  deseq_path = de_csv_path, 
+  output_dir = out_dir,
+  width = 10,               # save width (in)
+  height = 15,              # save height (in)
+  colour_limits = c(-2,2),  # sets absolute colour limits for comparing multiple plots
+  custom_palette = c("navy","lightgrey","darkorange3") # set low, mid, and high point gradients
+)
+```
