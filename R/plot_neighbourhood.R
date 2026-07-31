@@ -58,20 +58,23 @@ plot_neighbourhood <- function(filtered_data,
   timepoints_sorted <- sort(unique(plot_df$timepoint))
   plot_df$timepoint <- factor(plot_df$timepoint, levels = timepoints_sorted)
   
-  # --- AUTOMATED DYNAMIC TITLE & FILENAME TAG ---
-  # Pull the actual flank count attached during parse_neighbourhood()
+  # --- AUTOMATED DYNAMIC TITLE, SUBTITLE, CAPTION & FILENAME TAG ---
   flank_used <- attr(filtered_data, "flank_count")
   if (is.null(flank_used)) flank_used <- 0
   
   mode_attr <- attr(filtered_data, "query_mode")
   is_auto_detected <- identical(mode_attr, "Auto-Detected Operon")
   
+  # Build the caption string using your p_thresh argument
+  plot_caption <- paste0("Significance threshold: padj < ", p_thresh)
+  
   if (is_auto_detected) {
     query_gene_tag <- attr(filtered_data, "query_target")
     if (is.null(query_gene_tag)) {
       query_gene_tag <- plot_df$locus_tag[1]
     }
-    plot_title <- paste0("Auto-Detected Operon Neighborhood for ", query_gene_tag, " (Flanking Window: ", flank_used, ")")
+    plot_title <- paste0("Auto-Detected Operon Neighborhood: ", query_gene_tag)
+    plot_subtitle <- paste0("Flanking Window: ", flank_used, " operon(s)")
     file_tag <- paste0("auto_", gsub("[^[:alnum:]]", "_", query_gene_tag))
   } else {
     operon_tag <- if ("operon_id" %in% names(plot_df) && any(!is.na(plot_df$operon_id))) {
@@ -79,7 +82,8 @@ plot_neighbourhood <- function(filtered_data,
     } else {
       as.character(plot_df$locus_tag[1])
     }
-    plot_title <- paste0("Operon Neighborhood for ", operon_tag, " (Flanking Window: ", flank_used, ")")
+    plot_title <- paste0("Predefined Operon Neighborhood: ", operon_tag)
+    plot_subtitle <- paste0("Flanking Window: ", flank_used, " operon(s)")
     file_tag <- paste0("operon_", operon_tag)
   }
   
@@ -100,17 +104,21 @@ plot_neighbourhood <- function(filtered_data,
       arrow_body_height = unit(4, "mm")        
     )
   
-  # Conditionally add or drop internal labels
+  # Conditionally add internal labels with smart color-flipping for background contrast
   if (!clean_short_genes) {
     p <- p + geom_gene_label(
-      aes(label = gene_label), 
+      aes(
+        label = gene_label,
+        color = if_else(abs(log2FC) >= (max(abs(log2FC), na.rm = TRUE) / 2), "white", "black")
+      ), 
       align = "centre", 
-      color = "black", 
       fontface = "italic",
       min.size = 3
-    )
+    ) +
+      scale_color_identity()
   }
   
+  # Significance stars sit on the clean background, so they remain standard black/bold
   p <- p + geom_text(
     aes(
       x = (start + end) / 2, 
@@ -120,7 +128,7 @@ plot_neighbourhood <- function(filtered_data,
     vjust = if (clean_short_genes) 0.5 else 1.8, 
     size = 4, 
     fontface = "bold",
-    color = if (clean_short_genes) "white" else "black", 
+    color = "black", 
     show.legend = FALSE
   ) +
     scale_y_discrete(limits = rev(timepoints_sorted)) +
@@ -129,7 +137,8 @@ plot_neighbourhood <- function(filtered_data,
       mid = custom_palette[2],  
       high = custom_palette[3],  
       midpoint = 0,
-      limits = colour_limits,   # <-- NEW: locks the color scale if provided
+      limits = colour_limits,   
+      labels = scales::label_number(accuracy = 0.1), 
       name = "Log2 FC"
     ) +
     theme_minimal() +
@@ -141,8 +150,10 @@ plot_neighbourhood <- function(filtered_data,
       axis.text.y = element_text(face = "bold", size = 10)
     ) +
     labs(
-      x = "Genomic Coordinate (bp)",
-      title = plot_title
+      x = "Genomic Coordinates (bp)",
+      title = plot_title,
+      subtitle = plot_subtitle,
+      caption = plot_caption
     )
   
   # Handling display styles and clean external labels independently
