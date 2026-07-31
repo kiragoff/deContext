@@ -99,6 +99,26 @@ plot_neighbourhood(
 │   ├── parse_neighbourhood.R    # Ingests GBFF and DE data, handles operon grouping
 │   ├── extract_neighbourhood.R  # Dynamic timepoint parsing and regex helpers
 │   └── plot_neighbourhood.R     # ggplot2 rendering engine, styling, and auto-saving
+├── figures/
+│   ├── operon_2037_flank_1_tps_06h-24h_style_above_clean.png
+│   ├── auto_PBUTOS_03315_flank_1_tps_06h-24h_style_none.png
+│   └── operon_2919_flank_3_tps_06h-24h_style_table_clean.png
 ├── analysis_notebook.Rmd        # Complete run notebook and vignette examples
 └── README.md
 ```
+
+# Gallery
+
+### 1. External Clean Labels (`style = "above"`)
+*Automatically places clean, non-overlapping gene labels above the top timepoint track using `ggrepel`.*
+![Above Style Example](figures/operon_2037_flank_1_tps_06h-24h_style_above_clean.png)
+
+### 2. Stadard Arrows (`style = "none"`, `clean_short_genes = FALSE`) in Operon Auto-Detect Mode (`query_type = "operon_auto`)
+*Standard gene arrows colored by expression with internal significance markers (`*`), with operon auto-detection enabled.*
+![None Style Example](figures/auto_PBUTOS_03315_flank_1_tps_06h-24h_style_none.png)
+
+### 3. Integrated Metadata Table (`style = "table"`) with Custom Colours and Scale
+*Combines the genomic neighborhood tracks with a companion summary table stacking locus tags, operon IDs, and product descriptions underneath. Also features custom colours and custom scale limits.*
+![Table Style Example](figures/operon_2919_flank_3_tps_06h-24h_style_table_clean.png)
+
+
